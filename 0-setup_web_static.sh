@@ -1,35 +1,50 @@
 #!/usr/bin/env bash
-# Sets up a web server for deployment of web_static.
 
-apt-get update
-apt-get install -y nginx
+# Install Nginx if not already installed
+if ! command -v nginx &> /dev/null; then
+    sudo apt-get update
+    sudo apt-get -y install nginx
+fi
 
-mkdir -p /data/web_static/releases/test/
-mkdir -p /data/web_static/shared/
-echo "Holberton School" > /data/web_static/releases/test/index.html
-ln -sf /data/web_static/releases/test/ /data/web_static/current
+# Create necessary directories only if they don't exist
+sudo mkdir -p /data/web_static/releases/test /data/web_static/shared
 
-chown -R ubuntu /data/
-chgrp -R ubuntu /data/
+# Create a fake HTML file for testing Nginx configuration if not already present
+if [ ! -e /data/web_static/releases/test/index.html ]; then
+    echo "<html>
+  <head>
+  </head>
+  <body>
+    Holberton School
+  </body>
+</html>" | sudo tee /data/web_static/releases/test/index.html > /dev/null
+fi
 
-printf %s "server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    add_header X-Served-By $hostname;
-    root   /var/www/html;
-    index  index.html index.htm;
-    location /hbnb_static {
-        alias /data/web_static/current;
-        index index.html index.htm;
-    }
-    location /redirect_me {
-        return 301 http://github.com/evahaudi;
-    }
-    error_page 404 /404.html;
-    location /404 {
-      root /var/www/html;
-      internal;
-    }
-}" > /etc/nginx/sites-available/default
+# Remove /data/web_static/current if it exists
+if [ -L /data/web_static/current ]; then
+    sudo unlink /data/web_static/current
+fi
 
-service nginx restart
+# Remove /data/web_static/current/index.html if it exists
+if [ -f /data/web_static/current/index.html ]; then
+    sudo rm /data/web_static/current/index.html
+fi
+
+# Create symbolic link pointing to the directory, not the file
+sudo ln -s /data/web_static/releases/test /data/web_static/current
+
+# Set ownership to the ubuntu user and group recursively
+sudo chown -R ubuntu:ubuntu /data/
+
+# Update Nginx configuration if not already configured
+if ! grep -q '/hbnb_static/' /etc/nginx/sites-available/default; then
+    config_block="\\\n\tlocation /hbnb_static/ {\n\t\talias /data/web_static/current/;\n\t}\n"
+    sudo sed -i "/^http {/a $config_block" /etc/nginx/sites-available/default
+
+    # Restart Nginx
+    sudo systemctl restart nginx
+fi
+
+# Exit successfully
+exit 0
+
