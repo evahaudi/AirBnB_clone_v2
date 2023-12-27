@@ -12,7 +12,7 @@ $nginx_conf = "server {
         index index.html index.htm;
     }
     location /redirect_me {
-        return 301 http://github.com/evahaudi/;
+        return 301 http://cuberule.com/;
     }
     error_page 404 /404.html;
     location /404 {
