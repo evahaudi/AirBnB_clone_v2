@@ -81,7 +81,7 @@ def do_deploy(archive_path):
         return False
 
     # Create a new symbolic link
-    res = run("ln -s /data/web_static/releases/{}/ /data/web_static/current"
+    res = run("ln -s /data/web_static/releases/{}/web_static /data/web_static/current"
               .format(filename))
     if res.failed:
         return False
