@@ -29,66 +29,57 @@ def do_pack():
     return filename
 
 
-def do_deploy(archive_path):
+def do_deploy(archive_path, version):
     """Function to distribute an archive to a server"""
     if not os.path.exists(archive_path):
         return False
 
-    # Extract filename from archive_path
-    rex = r'^versions/(\S+).tgz'
-    match = re.search(rex, archive_path)
-    if not match:
-        return False
-
-    filename = match.group(1)
-
-    # Upload the archive to the /tmp/ directory on the server
-    res = put(archive_path, "/tmp/{}.tgz".format(filename))
+    # Upload the archive
+    res = put(archive_path, "/tmp/{}.tgz".format(version))
     if res.failed:
         return False
 
-    # Create the necessary directories
-    res = run("mkdir -p /data/web_static/releases/{}/".format(filename))
+    # Create necessary directories
+    res = run("mkdir -p /data/web_static/releases/{}/".format(version))
     if res.failed:
         return False
 
-    # Extract the contents of the archive
+    # Extract contents of the archive
     res = run("tar -xzf /tmp/{}.tgz -C /data/web_static/releases/{}/"
-              .format(filename, filename))
+              .format(version, version))
     if res.failed:
         return False
 
-    # Delete the archive
-    res = run("rm /tmp/{}.tgz".format(filename))
+    # Remove the archive
+    res = run("rm /tmp/{}.tgz".format(version))
     if res.failed:
         return False
 
     # Move contents to correct location
     res = run("mv /data/web_static/releases/{}/web_static/* /data/web_static/releases/{}/"
-              .format(filename, filename))
+              .format(version, version))
     if res.failed:
         return False
 
-    # Remove the original web_static directory
+    # Remove redundant directory
     res = run("rm -rf /data/web_static/releases/{}/web_static"
-              .format(filename))
+              .format(version))
     if res.failed:
         return False
 
-    # Remove the current symbolic link
-    res = run("rm -rf /data/web_static/current")
+    # Create my_index.html
+    res = run("echo 'Hello Holberton!' > /data/web_static/releases/{}/my_index.html"
+              .format(version))
     if res.failed:
         return False
 
-    # Create a new symbolic link
-    res = run("ln -s /data/web_static/releases/{}/web_static /data/web_static/current"
-              .format(filename))
-    if res.failed:
-        return False
+    # Ensure correct permissions
+    res = run("chown -R ubuntu:ubuntu /data/web_static/releases/{}/"
+              .format(version))
+    res = run("chown -h ubuntu:ubuntu /data/web_static/current")
 
     print('New version deployed!')
     return True
-
 
 
 def deploy():
@@ -96,5 +87,11 @@ def deploy():
     filepath = do_pack()
     if filepath is None:
         return False
-    d = do_deploy(filepath)
+
+    # Extract version from the archive path
+    rex = r'^versions/(\S+).tgz'
+    match = re.search(rex, filepath)
+    version = match.group(1)
+
+    d = do_deploy(filepath, version)
     return d
