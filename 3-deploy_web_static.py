@@ -74,5 +74,10 @@ def deploy():
     filepath = do_pack()
     if filepath is None:
         return False
+
+    rex = r'^versions/(\S+).tgz'
+    match = re.search(rex, filepath)
+    version = match.group(1)
+
     d = do_deploy(filepath)
     return d
